@@ -11,7 +11,7 @@ pgmimage = []
 width = 0
 height = 0
 max = 0
-filename = "dragon"
+filename = "casablanca"
 with open(f'pgm-files/{filename}.pgm') as f:
     c = 0
     single_list = []
@@ -46,6 +46,14 @@ with open(f'pgm-files/{filename}.pgm') as f:
 # print(height)
 # print(max)
 
+def writepgm(img, filename):
+    with open(f'{filename}.pgm', "w") as f:
+        f.write(f'P2\n')
+        f.write(f'{width} {height}\n')
+        f.write(f'{max}\n')
+        for x in img:
+            f.write(" ".join([f'{int(round(c)) }' for c in x]) + "\n")
+
 def change_brightness(img, option):
     if option == 2:
         for row in img:
@@ -70,7 +78,7 @@ def change_brightness(img, option):
     else:
         print("invalid option, enter either 0 or 1")
 
-def threshold(tvalue):
+def threshold(img, tvalue):
     for row in img:
         for n in range(len(row)):
             row[n] = 255 if row[n] >= tvalue else 0
@@ -98,48 +106,34 @@ def flip(img, option):
         case _:
             print("invalid choice for flip")
 
-def rotate():
+def rotate(img):
     print("0 for counter-clockwise\n1 for clockwise")
     c = int(input())
     # transpose the matrix first
-    for r in range(len(image)):
-        for n in range(r, len(image[r])):
-            temp = image[r][n]
-            image[r][n] = image[n][r]
-            image[n][r] = temp
+    for r in range(len(img)):
+        for n in range(r, len(img[r])):
+            temp = img[r][n]
+            img[r][n] = img[n][r]
+            img[n][r] = temp
     match c:
         case 0:
-            flip('v')
+            flip(img, 'v')
         case 1:
-            flip('h')
+            flip(img, 'h')
         case _:
             print("invalid choice for rotate")
 
-def blur(img, n):
-    if(n%2==0):
-        print("\n\n!! Enter an odd number for the kernel size !!")
-        return -1
+    return img
 
-    kernel = []
-    for i in range(n):
-        row = []
-        for j in range(n):
-            row.append(1/(n*n))
-        kernel.append(row)
-    # for debugging
-    # for x in kernel:
-    #     for y in x: print(y,end = ' ')
-    #     print()
-    
+def apply_pad(img, n):
     pad = int((n-1)/2)
-
-    pad_image = []
+    pad_img = []
 
     for i in range(pad):
         row = []
         for j in range(2*pad + len(img[0])):
             row.append(0)
-        pad_image.append(row)
+        pad_img.append(row)
 
     for i in range(len(img)):
         row = []
@@ -152,39 +146,74 @@ def blur(img, n):
         for j in range(pad):
             row.append(0)
 
-        pad_image.append(row)
+        pad_img.append(row)
 
     for i in range(pad):
         row = []
         for j in range(2*pad + len(img[0])):
             row.append(0)
-        pad_image.append(row)
+        pad_img.append(row)
 
-    # for debugging
-    # print(f'\npadded image:\n')
-    # for x in pad_image:
-    #     for y in x: print(y, end=' ')
-    #     print()
+    return pad_img
+
+
+def blur(img, n):
+    if(n%2==0):
+        print("\n\n!! Enter an odd number for the kernel size !!")
+        return -1
+
+    kernel = []
+    for i in range(n):
+        row = []
+        for j in range(n):
+            row.append(1/(n*n))
+        kernel.append(row)
+
+    pad_img = apply_pad(img, n)
 
     print("\n")
     blurred = []
-    for r in range(len(pad_image) - n + 1):
+    for r in range(len(pad_img) - n + 1):
         row = []
-        for p in range(len(pad_image[r]) - n + 1): # figure out why there has to be a +1
+        for p in range(len(pad_img[r]) - n + 1):
             sum = 0
             for y in range(n):
                 for x in range(n):
-                    sum += kernel[y][x] * pad_image[r+y][p+x]
+                    sum += kernel[y][x] * pad_img[r+y][p+x]
                     #print(sum)
             row.append(sum)
         blurred.append(row)
 
-    with open("blur_output.pgm", "w") as f:
+    writepgm(blurred, "blur_output")
+    return blurred
+
+def edge(img, n):
+    kernel =   [[-1/4, 2/4, 1/4],
+                [-2/4, 0, 2/4],
+                [-1/4, -2/4, 1/4]]
+
+    pad_img = apply_pad(img, n)
+    edges = []
+    for r in range(len(pad_img) - n + 1):
+        row = []
+        for p in range(len(pad_img[r]) - n + 1):
+            sum = 0
+            for y in range(n):
+                for x in range(n):
+                    sum += kernel[y][x] * pad_img[r+y][p+x]
+                    #print(sum)
+            row.append(sum)
+        edges.append(row)
+
+    with open("edge_output.pgm", "w") as f:
         f.write(f'P2\n')
         f.write(f'{width} {height}\n')
         f.write(f'{max}\n')
-        for x in blurred:
-            f.write(" ".join([f'{int(round(c)) }' for c in x]) + "\n")
+        for x in edges:
+            f.write(" ".join([f'{abs(int(round(c)))}' for c in x]) + "\n")
+
+    return edges
+
 
 ogimage = copy.deepcopy(image)
 while True:
@@ -194,6 +223,7 @@ while True:
     #     for px in row: print(px, end="\t")
     #     print()  
 
+    
     print("Current Image:")
     for row in image:
         for px in row: print(px, end="\t")
@@ -207,6 +237,7 @@ while True:
     print("4\tFlip image")
     print("5\tRotate image")
     print("6\tBlur image")
+    print("7\tDetect Edges")
     choice = int(input())
     
     match choice:
@@ -219,17 +250,19 @@ while True:
         case 3:
             print("Enter the threshold value:", end=' ')
             value = int(input())
-            threshold(value)
+            threshold(image, value)
         case 4:
             print("\nH for horizontal flip\nV for vertical flip")
             c = input()
             flip(image, c)
         case 5:
-            rotate()
+            rotate(image)
         case 6:
             print("Enter the kernel size (odd numbers only):")
             c = int(input())
             blur(pgmimage, c)
+        case 7:
+            edge(pgmimage, 3)
         case _:
             print("invalid choice")
     
