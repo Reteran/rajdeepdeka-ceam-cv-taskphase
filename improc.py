@@ -5,17 +5,46 @@ image = []
 with open("grayscale.txt") as f:
     for line in f:
         image.append([int(n) for n in line.split(',')])
-        
+
+# PGM filereader
 pgmimage = []
-with open("feep.pgm") as f:
+width = 0
+height = 0
+max = 0
+filename = "dragon"
+with open(f'pgm-files/{filename}.pgm') as f:
     c = 0
+    single_list = []
     for line in f:
+        if c == 1:
+            width = int(line.split(' ')[0])
+            height = int(line.split(' ')[1])
+        if c == 2:
+            max = int(line.split(' ')[0])
         if c >= 3:
-            pgmimage.append([int(n) for n in line.split(' ') if n != ''])
+            for x in [int(n.strip()) for n in line.split(' ') if n.strip()]: # remember: if n.strip() checks if n.strip() is truthy, as '' (empty char) is considered equivalent to false when evaluated with if
+                single_list.append(x)
+            # pgmimage.append([int(n) for n in line.split(' ') if n != ''])
         if '\n' in line:
             c+=1
-for x in pgmimage:
-    print(x)
+    
+    wcount = 0
+    row = []
+    for x in single_list:
+        wcount+=1
+        row.append(x)
+        if wcount == width:
+            pgmimage.append(row)
+            row = []
+            wcount = 0
+
+# for x in pgmimage:
+#     for y in x: print(y, end=' ')
+#     print()
+
+# print(width)
+# print(height)
+# print(max)
 
 def change_brightness(img, option):
     if option == 2:
@@ -88,8 +117,8 @@ def rotate():
 
 def blur(img, n):
     if(n%2==0):
-        print("Enter an odd number for the kernel size")
-        return _
+        print("\n\n!! Enter an odd number for the kernel size !!")
+        return -1
 
     kernel = []
     for i in range(n):
@@ -97,8 +126,13 @@ def blur(img, n):
         for j in range(n):
             row.append(1/(n*n))
         kernel.append(row)
-
+    # for debugging
+    # for x in kernel:
+    #     for y in x: print(y,end = ' ')
+    #     print()
+    
     pad = int((n-1)/2)
+
     pad_image = []
 
     for i in range(pad):
@@ -112,8 +146,8 @@ def blur(img, n):
         for j in range(pad):
             row.append(0)
 
-        for n in img[i]:
-            row.append(n)
+        for j in img[i]:
+            row.append(j)
         
         for j in range(pad):
             row.append(0)
@@ -126,28 +160,31 @@ def blur(img, n):
             row.append(0)
         pad_image.append(row)
 
-    for x in pad_image:
-        for y in x: print(y, end=' ')
-        print()
+    # for debugging
+    # print(f'\npadded image:\n')
+    # for x in pad_image:
+    #     for y in x: print(y, end=' ')
+    #     print()
 
     print("\n")
     blurred = []
-    for r in range(len(pad_image) - n):
+    for r in range(len(pad_image) - n + 1):
         row = []
-        for p in range(len(pad_image[r]) - n):
+        for p in range(len(pad_image[r]) - n + 1): # figure out why there has to be a +1
             sum = 0
             for y in range(n):
                 for x in range(n):
-                    sum += kernel[y][x] * pad_image[p+y][r+x]
+                    sum += kernel[y][x] * pad_image[r+y][p+x]
+                    #print(sum)
             row.append(sum)
         blurred.append(row)
 
-    for x in blurred:
-        for y in x: print(y, end=' ')
-        print()
-        
-
-
+    with open("blur_output.pgm", "w") as f:
+        f.write(f'P2\n')
+        f.write(f'{width} {height}\n')
+        f.write(f'{max}\n')
+        for x in blurred:
+            f.write(" ".join([f'{int(round(c)) }' for c in x]) + "\n")
 
 ogimage = copy.deepcopy(image)
 while True:
